@@ -148,6 +148,7 @@ List cppRegmixMLE_homo(NumericMatrix bs,
       }
       sigma = sqrt( sum(ssr) / n );
 
+      /* test */
       if (p>0) { /* update gamma */
         zz.zeros();
         ze.zeros();
