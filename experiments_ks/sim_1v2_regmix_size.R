@@ -17,7 +17,7 @@ clusterEvalQ(cl, library(subgroupLRT))
 
 sink("sim_size.out", append=T)
 
-nrep <- 100
+nrep <- 3000
 # nobset <- c(100,200)
 nobset <- c(100)
 nnob <- length(nobset)

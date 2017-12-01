@@ -1,100 +1,72 @@
 [1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  0.045   0.021   7.978 
+[1]   1 400 100
+ alpha1  alpha2 mubeta1 mubeta2 mubeta3 mubeta4 
+    0.2     0.8     1.0     2.0     3.0     4.0 
+alpha1 alpha2    mu1  beta1    mu2  beta2  sigma 
+ 0.199  0.801  1.018  2.007  3.007  4.010  0.997 
 [1] "DGP, nob, nrep"
-[1]   1 200 100
-   user  system elapsed 
-  0.020   0.015  14.980 
+[1]   2 400 100
+ alpha1  alpha2 mubeta1 mubeta2 mubeta3 mubeta4 
+    0.4     0.6     1.0     2.0     3.0     4.0 
+alpha1 alpha2    mu1  beta1    mu2  beta2  sigma 
+ 0.402  0.598  1.020  2.010  3.005  4.009  0.997 
 [1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  0.015   0.010   9.285 
+[1]   3 400 100
+ alpha1  alpha2 mubeta1 mubeta2 mubeta3 mubeta4 
+    0.5     0.5     1.0     2.0     3.0     4.0 
+alpha1 alpha2    mu1  beta1    mu2  beta2  sigma 
+ 0.499  0.501  1.019  2.010  3.000  4.006  0.998 
 [1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  0.023   0.014  10.119 
+[1]   4 400 100
+ alpha1  alpha2 mubeta1 mubeta2 mubeta3 mubeta4 
+    0.2     0.8     1.0     0.0     1.0     2.0 
+alpha1 alpha2    mu1  beta1    mu2  beta2  sigma 
+ 0.546  0.454  0.892  1.113  1.154  0.908  0.999 
 [1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  5.042   0.078   9.552 
+[1]   5 400 100
+ alpha1  alpha2 mubeta1 mubeta2 mubeta3 mubeta4 
+    0.4     0.6     1.0     0.0     1.0     2.0 
+alpha1 alpha2    mu1  beta1    mu2  beta2  sigma 
+ 0.509  0.491  0.928  1.116  1.109  0.907  0.994 
 [1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  0.020   0.013   9.612 
+[1]   6 400 100
+ alpha1  alpha2 mubeta1 mubeta2 mubeta3 mubeta4 
+    0.5     0.5     1.0     0.0     1.0     2.0 
+alpha1 alpha2    mu1  beta1    mu2  beta2  sigma 
+ 0.494  0.506  0.935  1.016  1.097  1.004  0.994 
 [1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  0.021   0.011   8.382 
+[1]   7 400 100
+ alpha1  alpha2 mubeta1 mubeta2 mubeta3 mubeta4 
+    0.2     0.8     1.0     2.0     3.0    -1.0 
+alpha1 alpha2    mu1  beta1    mu2  beta2  sigma 
+ 0.199  0.801  1.011  2.000  2.996 -0.997  1.000 
 [1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  0.015   0.008   7.911 
+[1]   8 400 100
+ alpha1  alpha2 mubeta1 mubeta2 mubeta3 mubeta4 
+    0.4     0.6     1.0     2.0     3.0    -1.0 
+alpha1 alpha2    mu1  beta1    mu2  beta2  sigma 
+ 0.404  0.596  1.000  2.001  2.997 -0.998  1.000 
 [1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  0.018   0.009   8.277 
+[1]   9 400 100
+ alpha1  alpha2 mubeta1 mubeta2 mubeta3 mubeta4 
+    0.5     0.5     1.0     2.0     3.0    -1.0 
+alpha1 alpha2    mu1  beta1    mu2  beta2  sigma 
+ 0.504  0.496  1.008  2.006  2.988 -1.003  1.001 
 [1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  5.336   0.112   8.242 
+[1]  10 400 100
+ alpha1  alpha2 mubeta1 mubeta2 mubeta3 mubeta4 
+    0.2     0.8    -1.0     2.0     1.0     2.0 
+alpha1 alpha2    mu1  beta1    mu2  beta2  sigma 
+ 0.216  0.784 -0.962  2.021  1.036  2.008  0.987 
 [1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  4.219   0.094   7.538 
+[1]  11 400 100
+ alpha1  alpha2 mubeta1 mubeta2 mubeta3 mubeta4 
+    0.4     0.6    -1.0     2.0     1.0     2.0 
+alpha1 alpha2    mu1  beta1    mu2  beta2  sigma 
+ 0.406  0.594 -0.982  2.017  1.020  2.013  0.995 
 [1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  5.259   0.099   8.174 
-[1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  4.698   0.077   7.795 
-[1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  4.758   0.081   8.021 
-[1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  5.195   0.068   8.352 
-[1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  0.019   0.009   7.891 
-[1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  5.363   0.094   8.274 
-[1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  4.882   0.098   7.715 
-[1] "DGP, nob, nrep"
-[1]   1 100   1
-   user  system elapsed 
-  0.002   0.000   0.139 
-[1] "DGP, nob, nrep"
-[1]   1 100   1
-   user  system elapsed 
-  0.002   0.001   0.149 
-[1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  0.020   0.008   6.365 
-[1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  4.767   0.073   6.673 
-[1] "DGP, nob, nrep"
-[1]   1 100 100
-   user  system elapsed 
-  0.013   0.008   6.603 
-[1] "DGP, nob, nrep"
-[1]   1 200 100
-   user  system elapsed 
-  0.023   0.014  11.961 
-[1] "DGP, nob, nrep"
-[1]   1 200 100
-   user  system elapsed 
-  0.023   0.014  11.341 
+[1]  12 400 100
+ alpha1  alpha2 mubeta1 mubeta2 mubeta3 mubeta4 
+    0.5     0.5    -1.0     2.0     1.0     2.0 
+alpha1 alpha2    mu1  beta1    mu2  beta2  sigma 
+ 0.503  0.497 -0.979  2.007  1.002  2.018  1.003 
