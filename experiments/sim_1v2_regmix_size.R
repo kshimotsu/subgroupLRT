@@ -6,7 +6,7 @@ library(parallel)
 library(normalregMix)
 library(subgroupLRT)
 
-setwd("~/Dropbox/subgroupLRT/experiments")
+setwd("~/Dropbox/yoichi/ProR/subgroupLRT/experiments")
 
 outfilename <- "sim_size.RData"
 
@@ -17,7 +17,7 @@ clusterEvalQ(cl, library(subgroupLRT))
 
 sink("sim_size.out", append=T)
 
-nrep <- 100
+nrep <- 10
 # nobset <- c(100,200)
 nobset <- c(100)
 nnob <- length(nobset)
