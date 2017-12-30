@@ -13,7 +13,9 @@ b0 <- rbind( tmp$tau, tmp$mubeta,  tmp$sigma, tmp$gam ) # (q1*m*ninits + q2 + 1 
 
 
 #Rcpp::sourceCpp('~/Dropbox/yoichi/ProR/subgroupLRT/src/cppSubgroupMLE_homo.cpp')
-out.short <- cppSubgroupMLE_homo(b0, y, x, v, z = NULL, m = 2, p = 0)
+#out.short <- cppSubgroupMLE_homo(b0, y, x, v, z = NULL, m = 2, p = 0)
+#cppSubgroupMLE_homo(b0, y, x, v, z = matrix(0), m = 2, p = 0, maxit = 1)
+cppSubgroupMLE_homo2(b0, y, x, z = matrix(0), m = 2, p = 0, maxit = 10, ninits = 1)
 
 #subgroupMLE_homo <- function (y, x, v, m = 2, z = NULL, vcov.method = c("Hessian", "OPG", "none"),
                               # ninits = 10, epsilon = 1e-08, maxit = 2000,

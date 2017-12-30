@@ -11,10 +11,10 @@ const double SINGULAR_EPS = 10e-10; // criteria for matrix singularity
 //' @export
 //' @title cppSubgroupMLE_homo
 //' @name cppSubgroupMLE_homo
-//' @param bs (q1+1)m + 1 + p by ninits matrix of initial values of (mu,beta,tau,sigma,gamma).
+//' @param bs q2 + (q+1)m + 1 + p by ninits matrix of initial values of (alpha,mu,beta,sigma,gamma).
 //' @param ys n by 1 vector of data for y.
-//' @param xs x n by q1 matrix of data for x.
-//' @param vs v n by q2 matrix of data for v
+//' @param xs x n by q1-1 matrix of data for x.
+//' @param vs v n by q2-1 matrix of data for v
 //' @param zs n by p matrix of regressor associated with gamma.
 //' @param m number of components in the mixture.
 //' @param p dimension of the regressor associated with gamma.
@@ -27,7 +27,7 @@ const double SINGULAR_EPS = 10e-10; // criteria for matrix singularity
 //' \item{post}{n*m by ininits matrix of posterior probabilities for observations.}
 //'
 // [[Rcpp::export]]
-List cppSubgroupMLE_homo(NumericMatrix bs,
+List cppSubgroupMLE_homo2(NumericMatrix bs,
                       NumericVector ys,
                       NumericMatrix xs,
                       NumericMatrix vs,
@@ -66,10 +66,12 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
   double oldloglik, diff, minr, w_j, sum_l_j, sigma;
   arma::mat x1(n,q1);
   arma::mat v1(n,q2);
-  arma::mat vtau(1,1);
+  double vtau =0;
+  double asum;
   double loglik = 0; // force initialization
   double ll = 0; // force initialization
   notcg.zeros();  // initialization
+  arma::vec pi(n);
 
   x1.col(0) = arma::ones(n);
   for (int i=1; i < q1; ++i) {
@@ -81,12 +83,12 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
     v1.col(i) = v.col(i-1);
   }
 
+
   /* iteration over ninits initial values of b */
   for (int jn=0; jn<ninits; jn++) {
 
     /* initialize EM iteration */
     b_jn = b.col(jn);
-
     for (int j=0; j < q2; ++j){
       tau(j) = b_jn(j);
     }
@@ -96,20 +98,21 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
         mubeta(i,j) = b_jn(q2+q1*j+i);
       }
     }
-    sigma = b_jn(q2+(q1+1)*m);
-    if (p>0) {
-      for (int j=0; j < p; j++){
-        gamma(j) = b_jn((q1+1)*m+1+j);
-      }
+  sigma = b_jn(q2+q1*m);
+  if (p>0) {
+    for (int j=0; j < p; j++){
+      gamma(j) = b_jn(q2+(q1+1)*m+1+j);
     }
-    oldloglik = R_NegInf;
-    emit = 0;
-    diff = 1.0;
-    sing = 0;
+  }
+  oldloglik = R_NegInf;
+  emit = 0;
+  diff = 1.0;
+  sing = 0;
 
     /* EM loop begins */
     for (int iter = 0; iter < maxit; iter++) {
       ll = - (double)n * M_LN_SQRT_2PI; /* n/2 times log(2pi) */
+  //     alp_sig = alpha/sigma;
 
       if (p==0) {
         ytilde = y;
@@ -122,23 +125,33 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
         r = (1.0/sigma) * ( ytilde(i) - trans(x1.row(i)*mubeta) );
         r = 0.5 * (r % r); /* This is faster than r = pow( r, 2.0 ) */
         minr = min(r);
+        /* alpha */
+        vtau = as_scalar(v1.row(i)*tau);
+        // alpha(0) = exp( vtau ) / ( 1 + exp ( vtau ));
+        asum = 0;
+        for (int j = 0; j < m-1; j++) {
+          alpha(j) = exp( vtau ) / ( 1 + exp( vtau ) );
+          asum += alpha(j);
+        }
+        alpha(m-1) = 1 - asum;
+        alp_sig = alpha/sigma;
         /* posterior for i */
         /* normalizing with minr avoids the problem of dividing by zero */
-        for (int j=0; j < m-1; j++) {
-          vtau = v1.row(i)*tau;
-          alpha(j) = exp( vtau );
-        }
-        alp_sig = alpha/sigma;
         l_j =  alp_sig % exp( minr-r );
         sum_l_j = sum( l_j );
         w.col(i) = l_j/sum_l_j; /* w(j,i) = alp_j*l_j / sum_j (alp_j*l_j) */
         /* loglikelihood*/
         ll +=  log(sum_l_j) - minr; /* subtract back minr */
-      } /* end for (i=0; i<n; i++) loop */
+       } /* end for (i=0; i<n; i++) loop */
 
       loglik = ll;
       diff = loglik - oldloglik;
       oldloglik = loglik;
+      Rprintf("diff = %f \n", diff);
+
+      /* update pi vector */
+      pi = w.row(0).t();
+
 
       /* Normal exit */
       if (diff < tol || emit>=maxit){
@@ -149,7 +162,7 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
       /* update tau, mu, and sigma */
       for (int j = 0; j < m; j++) {
         w_j = sum( w.row(j) ); /* w_j(j) = sum_i w(i,j) */
-        alpha(j) = w_j / n;
+  //       alpha(j) = w_j / n;
         wtilde = trans(w.row(j));
         for (int ii = 0; ii < q1; ii++) {
           xtilde.col(ii) = wtilde % x1.col(ii);
@@ -161,73 +174,75 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
           sing = 1;
           break;
         }
-
+  //
         mubeta.col(j) = solve( design_matrix , trans(xtilde) * ytilde );
         //mubeta.col(j) = solve( trans(xtilde) * x1 , trans(xtilde) * ytilde );
         ssr(j) = sum( trans(w.row(j)) % pow(  ytilde - x1*mubeta.col(j) , 2 ) );
-        alpha(j) = fmin( fmax(alpha(j),0.01), 0.99);
+  //       alpha(j) = fmin( fmax(alpha(j),0.01), 0.99);
       }
-      sigma = sqrt( sum(ssr) / n );
-
-      /* test */
-      if (p>0) { /* update gamma */
-        zz.zeros();
-        ze.zeros();
-        for (int j = 0; j < m; j++) {
-          wtilde = trans(w.row(j)) ;
-          for (int ii = 0; ii < p; ii++) {
-            ztilde.col(ii) = wtilde % z.col(ii);
-          }
-          zz = zz + trans(ztilde) * z;
-          ze = ze + trans(ztilde) * (y - x1*mubeta.col(j));
-        }
-
-        if (rcond(zz) < SINGULAR_EPS)
-        {
-          sing = 1;
-          break;
-        }
-
-        gamma = solve(zz,ze);
-      }
-
-      /* Check singularity */
-      for (int j=0; j<m; j++) {
-        if (alpha(j) < 1e-8 || std::isnan(alpha(j)) || sigma < 1e-8){
-          sing = 1;
-        }
-      }
-
-      /* Exit from the loop if singular */
-      if (sing) {
-        notcg(jn) = 1;
-        break;
-      }
-
-    }/* EM loop ends */
-
-    loglikset(jn) = ll;
-    for (int j=0; j < m; j++){
-      b_jn(j) = alpha(j);
-      for (int i=0; i<q1; ++i){
-        b_jn(m+q1*j+i) = mubeta(i,j);
-      }
-    }
-    b_jn((q1+1)*m) = sigma;
-    if (p>0) {
-      for (int j=0; j < p; j++){
-        b_jn((q1+1)*m+1+j) = gamma(j);
-      }
-    }
-    b.col(jn) = b_jn; /* b is updated */
-    post.col(jn) = vectorise(trans(w));
-
+  //     sigma = sqrt( sum(ssr) / n );
+  //
+  //     /* test */
+  //     if (p>0) { /* update gamma */
+  //       zz.zeros();
+  //       ze.zeros();
+  //       for (int j = 0; j < m; j++) {
+  //         wtilde = trans(w.row(j)) ;
+  //         for (int ii = 0; ii < p; ii++) {
+  //           ztilde.col(ii) = wtilde % z.col(ii);
+  //         }
+  //         zz = zz + trans(ztilde) * z;
+  //         ze = ze + trans(ztilde) * (y - x1*mubeta.col(j));
+  //       }
+  //
+  //       if (rcond(zz) < SINGULAR_EPS)
+  //       {
+  //         sing = 1;
+  //         break;
+  //       }
+  //
+  //       gamma = solve(zz,ze);
+  //     }
+  //
+  //     /* Check singularity */
+  //     for (int j=0; j<m; j++) {
+  //       if (alpha(j) < 1e-8 || std::isnan(alpha(j)) || sigma < 1e-8){
+  //         sing = 1;
+  //       }
+  //     }
+  //
+  //     /* Exit from the loop if singular */
+  //     if (sing) {
+  //       notcg(jn) = 1;
+  //       break;
+  //     }
+  //
+     }/* EM loop ends */
+  //
+  //   loglikset(jn) = ll;
+  //   for (int j=0; j < m; j++){
+  //     b_jn(j) = alpha(j);
+  //     for (int i=0; i<q1; ++i){
+  //       b_jn(m+q1*j+i) = mubeta(i,j);
+  //     }
+  //   }
+  //   b_jn((q1+1)*m) = sigma;
+  //   if (p>0) {
+  //     for (int j=0; j < p; j++){
+  //       b_jn((q1+1)*m+1+j) = gamma(j);
+  //     }
+  //   }
+  //   b.col(jn) = b_jn; /* b is updated */
+  //   post.col(jn) = vectorise(trans(w));
+  //
   } /* end for (jn=0; jn<ninits; jn++) loop */
-
+  //
   // return Rcpp::List::create(Named("loglikset") = wrap(loglikset),
   //                           Named("notcg") = wrap(notcg),
   //                             Named("post") = wrap(post)
   // );
-  return Rcpp::List::create(q2);
+  return Rcpp::List::create(Named("diff") = wrap(diff),
+                            Named("mubeta") = wrap(mubeta),
+                            Named("ssr") = wrap(ssr));
 }
 

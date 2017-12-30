@@ -6,7 +6,7 @@ library(parallel)
 library(normalregMix)
 library(subgroupLRT)
 
-setwd("~/Dropbox/yoichi/ProR/subgroupLRT/experiments")
+setwd("~/Dropbox/yoichi/ProR/subgroupLRT/experiments_ya")
 
 nrep <- 10
 # nobset <- c(100,200)
@@ -33,12 +33,12 @@ for (DGP in DGPset)
     set.seed(123456)
 
     x.all <- matrix(rnorm(nob*nrep), nrow = nob) - 1 # corresponds to Z in the paper
-    w.all <- matrix(rnorm(nob*nrep), nrow = nob) + 1 # corresponds to X in the paper
+    v.all <- matrix(rnorm(nob*nrep), nrow = nob) + 1 # corresponds to X in the paper
     y.all <- matrix(double(nob*nrep), nrow = nob)
     for (j in 1:nrep) {
-      w1 <- cbind(1, w.all[, j])
-      w1gamma <- w1 %*% gammavec
-      alpha1 <- exp(w1gamma) / (1 + exp(w1gamma))
+      v1 <- cbind(1, v.all[, j])
+      v1gamma <- v1 %*% gammavec
+      alpha1 <- exp(v1gamma) / (1 + exp(v1gamma))
       alpha <- cbind(alpha1, 1 - alpha1)
       ii <- apply(alpha, 1, function(x) {sample(m, 1, replace = TRUE, x)})
       x1 <- cbind(1, x.all[, j])
