@@ -71,7 +71,7 @@ subgroupMLE_homo <- function (y, x, v, m = 2, z = NULL, vcov.method = c("Hessian
   x1 <- cbind(1, x)
   v1 <- cbind(1, v)
   q1 <- ncol(x1)
-  q2 <- ncol(w1)
+  q2 <- ncol(v1)
 
   p       <- 0
   gam   <- NULL
@@ -118,17 +118,17 @@ subgroupMLE_homo <- function (y, x, v, m = 2, z = NULL, vcov.method = c("Hessian
     if (!is.null(binit)) {
       b0[ , 1] <- binit
     }
-    out.short <- cppRegmixMLE_homo(b0, y, x, v, ztilde, m, p, maxit.short,
+    out.short <- cppSubgroupMLE_homo(b0, y, x, v, ztilde, m, p, maxit.short,
                                   ninits.short, epsilon.short)
     # long EM
     components <- order(out.short$loglikset, decreasing = TRUE)[1:ninits]
     b1 <- b0[ ,components] # b0 has been updated
-    out <- cppRegmixMLE_homo(b1, y, x, ztilde, m, p, maxit, ninits, epsilon)
+    out <- cppSubgroupMLE_homo(b1, y, x, v, ztilde, m, p, maxit, ninits, epsilon)
 
     index     <- which.max(out$loglikset)
-    alpha <- b1[1:m,index] # b0 has been updated
-    mubeta <- matrix(b1[(1+m):((q1+1)*m),index],nrow=q1,ncol=m)
-    sigma <- b1[((q1+1)*m+1),index]
+    tau <- b1[1:q2,index] # b0 has been updated
+    mubeta <- matrix(b1[(1+q2):(q2+q1*m),index],nrow=q1,ncol=m)
+    sigma <- b1[(q2+q1*m+1),index]
     if (!is.null(z)) {
       gam     <- b1[((q1+1)*m+2):((q1+1)*m+p+1),index]
     }
@@ -139,7 +139,6 @@ subgroupMLE_homo <- function (y, x, v, m = 2, z = NULL, vcov.method = c("Hessian
     bic <- -2*loglik + log(n)*npar
 
     mu.order  <- order(mubeta[1,])
-    alpha     <- alpha[mu.order]
     mubeta    <- mubeta[,mu.order]
 
     postprobs <- postprobs[, mu.order]
@@ -158,22 +157,24 @@ subgroupMLE_homo <- function (y, x, v, m = 2, z = NULL, vcov.method = c("Hessian
       }
     }
 
-    parlist <- list(alpha = alpha, mubeta = mubeta, sigma = sigma, gam = gam)
+    parlist <- list(tau = tau, mubeta = mubeta, sigma = sigma, gam = gam)
     coefficients <- unlist(parlist)
-    names(coefficients)[(m+1):((q1+1)*m)] <- c(mubeta.name)
+    names(coefficients)[(q2+1):(q2+q1*m)] <- c(mubeta.name)
   }  # end m >= 2
 
-  if (vcov.method == "none") {
-    vcov <- NULL
-  } else {
-    vcov <- regmixVcov(y = y, x = x, coefficients = coefficients, z = z , vcov.method = vcov.method)
-  }
+  # if (vcov.method == "none") {
+  #   vcov <- NULL
+  # } else {
+  #   vcov <- regmixVcov(y = y, x = x, coefficients = coefficients, z = z , vcov.method = vcov.method)
+  # }
+  #
+  # a <- list(coefficients = coefficients, parlist = parlist, vcov = vcov, loglik = loglik,
+  #           aic = aic, bic = bic, postprobs = postprobs,
+  #           components = getComponentcomponents(postprobs),
+  #           call = match.call(), m = m, label = "PMLE")
 
-  a <- list(coefficients = coefficients, parlist = parlist, vcov = vcov, loglik = loglik,
-            aic = aic, bic = bic, postprobs = postprobs,
-            components = getComponentcomponents(postprobs),
-            call = match.call(), m = m, label = "PMLE")
-
+  a <- list(coefficients = coefficients, loglik = loglik,
+            aic = aic, bic = bic)
   # class(a) <- "normalregMix"
 
   a
@@ -195,11 +196,7 @@ subgroupMLE_homo <- function (y, x, v, m = 2, z = NULL, vcov.method = c("Hessian
 #' \item{mubeta}{(q+1 times m) by ninits matrix for mu and beta.}
 #' \item{sigma}{1 by ninits vector for sigma.}
 #' \item{gam}{m by ninits matrix for gam.}
-subgroupMLEinit_homo <- function (y, x, v, z = NULL, ninits = 1, m = 2)
-{
-  if (normalregMixtest.env$normalregMix.test.on) # initial values controlled by normalregMix.test.on
-    set.seed(normalregMixtest.env$normalregMix.test.seed)
-
+subgroupMLEinit_homo <- function (y, x, v, z = NULL, ninits = 10, m = 2) {
   n  <- length(y)
   q1 <- ncol(x) + 1
   q2 <- ncol(v) + 1
@@ -221,10 +218,10 @@ subgroupMLEinit_homo <- function (y, x, v, z = NULL, ninits = 1, m = 2)
     stdR        <- sd(r)
   }
 
-  alpha <- matrix(runif(m*ninits), nrow=m)
-  alpha <- t(t(alpha)/colSums(alpha))
+  # alpha <- matrix(runif(m*ninits), nrow=m)
+  # alpha <- t(t(alpha)/colSums(alpha))
 
-  tau <- matrix(0, nrow = q2, ncol = 1)
+  tau <- matrix(0, nrow = q2, ncol = ninits)
 
   minMU <- min(y - x %*% mubeta_hat[-1])
   maxMU <- max(y - x %*% mubeta_hat[-1])
@@ -236,6 +233,24 @@ subgroupMLEinit_homo <- function (y, x, v, z = NULL, ninits = 1, m = 2)
     }
   }
   sigma <- matrix(runif(ninits, min=0.1, max=1.5), nrow=1)*stdR
+  print(sigma)
+  # get initial values for tau
+  x1 = cbind(1,x)
+  for (j in 1:ninits) {
+    mubeta1 <- mubeta[1:q1, j]
+    mubeta2 <- mubeta[(q1+1):(2*q1), j]
+    sigma1 <- 1
+    r1 <- (1.0/sigma1)*(y - x1 %*% mubeta1)
+    r2 <- (1.0/sigma1)*(y - x1 %*% mubeta2)
+    r1 <- (0.5)*r1*r1
+    r2 <- (0.5)*r2*r2
+    f1 <- exp( - r1)
+    f2 <- exp( - r2)
+    pivec <- f1 / ( f1 + f2 )
+    out <- lsfit(v, pivec)
+    taulp = out$coef
+    tau[ , j] = taulp
+  }
 
   list(tau = tau, mubeta = mubeta, sigma = sigma, gam = gam)
 

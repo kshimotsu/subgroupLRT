@@ -27,7 +27,7 @@ const double SINGULAR_EPS = 10e-10; // criteria for matrix singularity
 //' \item{post}{n*m by ininits matrix of posterior probabilities for observations.}
 //'
 // [[Rcpp::export]]
-List cppSubgroupMLE_homo2(NumericMatrix bs,
+List cppSubgroupMLE_homo(NumericMatrix bs,
                       NumericVector ys,
                       NumericMatrix xs,
                       NumericMatrix vs,
@@ -62,8 +62,8 @@ List cppSubgroupMLE_homo2(NumericMatrix bs,
   arma::mat ztilde(n,p);
   arma::mat zz(p,p);
   arma::mat ze(p,1);
-  int emit, sing;
-  double oldloglik, diff, minr, w_j, sum_l_j, sigma;
+  int emit, sing, tauit;
+  double oldloglik, oldlogliktau, diff, difftau, minr, w_j, sum_l_j, sigma;
   arma::mat x1(n,q1);
   arma::mat v1(n,q2);
   double vtau =0;
@@ -72,6 +72,11 @@ List cppSubgroupMLE_homo2(NumericMatrix bs,
   double ll = 0; // force initialization
   notcg.zeros();  // initialization
   arma::vec pi(n);
+  double logliktau = 0;
+  arma::mat grad(q2,1);
+  arma::mat hessinv(q2,q2);
+  arma::vec lambda(n);
+  arma::vec restau(n);
 
   x1.col(0) = arma::ones(n);
   for (int i=1; i < q1; ++i) {
@@ -101,7 +106,7 @@ List cppSubgroupMLE_homo2(NumericMatrix bs,
   sigma = b_jn(q2+q1*m);
   if (p>0) {
     for (int j=0; j < p; j++){
-      gamma(j) = b_jn(q2+(q1+1)*m+1+j);
+      gamma(j) = b_jn(q2+q1*m+1+j);
     }
   }
   oldloglik = R_NegInf;
@@ -147,17 +152,16 @@ List cppSubgroupMLE_homo2(NumericMatrix bs,
       loglik = ll;
       diff = loglik - oldloglik;
       oldloglik = loglik;
-      Rprintf("diff = %f \n", diff);
+      //Rprintf("diff = %f \n", diff);
 
       /* update pi vector */
       pi = w.row(0).t();
-
 
       /* Normal exit */
       if (diff < tol || emit>=maxit){
         break;
       }
-       emit++;
+      emit++;
 
       /* update tau, mu, and sigma */
       for (int j = 0; j < m; j++) {
@@ -180,7 +184,41 @@ List cppSubgroupMLE_homo2(NumericMatrix bs,
         ssr(j) = sum( trans(w.row(j)) % pow(  ytilde - x1*mubeta.col(j) , 2 ) );
   //       alpha(j) = fmin( fmax(alpha(j),0.01), 0.99);
       }
-  //     sigma = sqrt( sum(ssr) / n );
+      sigma = sqrt( sum(ssr) / n );
+
+      /* Update tau */
+      tauit = 0;
+      difftau = 0;
+      oldlogliktau = R_NegInf;
+      grad = arma::zeros(q2,1);
+      hessinv = arma::zeros(q2,q2);
+      for (int itertau = 0; itertau < maxit; itertau++) {
+        for (int i = 0; i < n; i++) {
+          vtau = as_scalar(v1.row(i)*tau);
+          lambda(i) = exp(vtau) / ( 1 + exp(vtau));
+          restau(i) = pi(i) - lambda(i);
+          grad += trans( restau(i) * v1.row(i) );
+          hessinv += lambda(i)*restau(i)*trans( v1.row(i) ) * v1.row(i);
+        }
+        tau = tau + inv_sympd(hessinv) * grad; /* update tau */
+
+        logliktau = 0;
+        for (int i = 0; i < n; i++) {
+          vtau = as_scalar(v1.row(i)*tau);
+          lambda(i) = exp(vtau) / ( 1 + exp(vtau));
+          logliktau += pi(i) * log( lambda(i) ) + ( 1 - pi(i) ) * log( 1 - lambda(i) ); /* compute the value of log likelihood */
+        }
+        difftau = logliktau - oldlogliktau;
+        oldlogliktau = logliktau;
+
+        /* Normal exit */
+        if (difftau < tol || tauit>=maxit){
+          break;
+        }
+        tauit++;
+      } /* end of itertau loop */
+
+
   //
   //     /* test */
   //     if (p>0) { /* update gamma */
@@ -219,30 +257,31 @@ List cppSubgroupMLE_homo2(NumericMatrix bs,
   //
      }/* EM loop ends */
   //
-  //   loglikset(jn) = ll;
-  //   for (int j=0; j < m; j++){
-  //     b_jn(j) = alpha(j);
-  //     for (int i=0; i<q1; ++i){
-  //       b_jn(m+q1*j+i) = mubeta(i,j);
-  //     }
-  //   }
-  //   b_jn((q1+1)*m) = sigma;
-  //   if (p>0) {
-  //     for (int j=0; j < p; j++){
-  //       b_jn((q1+1)*m+1+j) = gamma(j);
-  //     }
-  //   }
-  //   b.col(jn) = b_jn; /* b is updated */
-  //   post.col(jn) = vectorise(trans(w));
-  //
+     loglikset(jn) = ll;
+     for (int j = 0; j<q2; j++) {
+       b_jn(j) = tau(j);
+     }
+     for (int j=0; j < m; j++){
+      for (int i=0; i<q1; ++i){
+        b_jn(q2+q1*j+i) = mubeta(i,j);
+      }
+     }
+     b_jn(q2+q1*m) = sigma;
+     if (p>0) {
+       for (int j=0; j < p; j++){
+         b_jn(q2 + q1*m+1+j) = gamma(j);
+       }
+     }
+     b.col(jn) = b_jn; /* b is updated */
+     post.col(jn) = vectorise(trans(w));
+
   } /* end for (jn=0; jn<ninits; jn++) loop */
   //
   // return Rcpp::List::create(Named("loglikset") = wrap(loglikset),
   //                           Named("notcg") = wrap(notcg),
   //                             Named("post") = wrap(post)
   // );
-  return Rcpp::List::create(Named("diff") = wrap(diff),
-                            Named("mubeta") = wrap(mubeta),
-                            Named("ssr") = wrap(ssr));
+  return Rcpp::List::create(Named("loglikset") = wrap(loglikset),
+                            Named("post") = wrap(post));
 }
 
