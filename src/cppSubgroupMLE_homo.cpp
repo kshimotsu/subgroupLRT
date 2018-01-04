@@ -11,7 +11,7 @@ const double SINGULAR_EPS = 10e-10; // criteria for matrix singularity
 //' @export
 //' @title cppSubgroupMLE_homo
 //' @name cppSubgroupMLE_homo
-//' @param bs q2 + (q+1)m + 1 + p by ninits matrix of initial values of (alpha,mu,beta,sigma,gamma).
+//' @param bs q2 + (q+1)m + 1 + p by ninits matrix of initial values of (tau,mu,beta,sigma,gamma).
 //' @param ys n by 1 vector of data for y.
 //' @param xs x n by q1-1 matrix of data for x.
 //' @param vs v n by q2-1 matrix of data for v
@@ -74,7 +74,8 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
   arma::vec pi(n);
   double logliktau = 0;
   arma::mat grad(q2,1);
-  arma::mat hessinv(q2,q2);
+  arma::mat mhess(q2,q2);
+  arma::mat Imat(q2,q2);
   arma::vec lambda(n);
   arma::vec restau(n);
 
@@ -191,16 +192,20 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
       difftau = 0;
       oldlogliktau = R_NegInf;
       grad = arma::zeros(q2,1);
-      hessinv = arma::zeros(q2,q2);
+      mhess = arma::zeros(q2,q2);
       for (int itertau = 0; itertau < maxit; itertau++) {
         for (int i = 0; i < n; i++) {
           vtau = as_scalar(v1.row(i)*tau);
           lambda(i) = exp(vtau) / ( 1 + exp(vtau));
           restau(i) = pi(i) - lambda(i);
           grad += trans( restau(i) * v1.row(i) );
-          hessinv += lambda(i)*restau(i)*trans( v1.row(i) ) * v1.row(i);
+          mhess += lambda(i)*restau(i)*trans( v1.row(i) ) * v1.row(i); /* -H */
         }
-        tau = tau + inv_sympd(hessinv) * grad; /* update tau */
+        if (rcond(mhess) > SINGULAR_EPS) {
+          tau = tau + inv_sympd(mhess) * grad; /* update tau */
+        } else {
+          tau = tau + (inv_sympd(mhess) + 0.1*Imat.eye()) * grad;
+        }
 
         logliktau = 0;
         for (int i = 0; i < n; i++) {

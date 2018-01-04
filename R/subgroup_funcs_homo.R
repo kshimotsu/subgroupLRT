@@ -233,7 +233,7 @@ subgroupMLEinit_homo <- function (y, x, v, z = NULL, ninits = 10, m = 2) {
     }
   }
   sigma <- matrix(runif(ninits, min=0.1, max=1.5), nrow=1)*stdR
-  print(sigma)
+  # print(sigma)
   # get initial values for tau
   x1 = cbind(1,x)
   for (j in 1:ninits) {
