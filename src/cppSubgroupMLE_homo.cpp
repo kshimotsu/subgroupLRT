@@ -205,7 +205,9 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
         if (rcond(mhess) > SINGULAR_EPS) {
           tau = tau - inv_sympd(mhess) * grad; /* update tau */
         } else {
-          tau = tau - (inv_sympd(mhess) + 0.1*Imat.eye()) * grad;
+          tau = tau - 0.1*Imat.eye() * grad;
+          /* This one is slow but aviods errors.
+           * In the future, we should use BFGS. */
         }
 
         logliktau = 0;
