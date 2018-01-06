@@ -106,7 +106,7 @@ subgroupMLE_homo <- function (y, x, v, m = 2, z = NULL, vcov.method = c("Hessian
   } else {  # m >= 2
 
     # generate initial values
-    tmp <- subgroupMLEinit_homo(y = y, x = x, v =v, z=z, ninits = ninits.short, m = m)
+    tmp <- subgroupMLEinit_homo(y = y, x = x, v = v, z = z, ninits = ninits.short, m = m)
 
 	if (is.null(z))
       ztilde <- matrix(0) # dummy
@@ -138,10 +138,17 @@ subgroupMLE_homo <- function (y, x, v, m = 2, z = NULL, vcov.method = c("Hessian
     aic <- -2*loglik + 2*npar
     bic <- -2*loglik + log(n)*npar
 
-    mu.order  <- order(mubeta[1,])
+    tau1.sign <- sign(tau[1])
+    tau <- tau1.sign*tau;
+    tau1.positive <- (tau1.sign+1)/2;
+    mu.order <-  tau1.positive*c(1:2) + (1-tau1.positive)*c(2:1)
+    # This works only when m=2
+
+#    mu.order  <- order(mubeta[1,])
     mubeta    <- mubeta[,mu.order]
 
     postprobs <- postprobs[, mu.order]
+
     colnames(postprobs) <- c(paste("comp", ".", 1:m, sep = ""))
 
     mubeta.name <- matrix(0,nrow = q1, ncol = m)
@@ -235,22 +242,22 @@ subgroupMLEinit_homo <- function (y, x, v, z = NULL, ninits = 10, m = 2) {
   sigma <- matrix(runif(ninits, min=0.1, max=1.5), nrow=1)*stdR
   # print(sigma)
   # get initial values for tau
-  x1 = cbind(1,x)
-  for (j in 1:ninits) {
-    mubeta1 <- mubeta[1:q1, j]
-    mubeta2 <- mubeta[(q1+1):(2*q1), j]
-    sigma1 <- 1
-    r1 <- (1.0/sigma1)*(y - x1 %*% mubeta1)
-    r2 <- (1.0/sigma1)*(y - x1 %*% mubeta2)
-    r1 <- (0.5)*r1*r1
-    r2 <- (0.5)*r2*r2
-    f1 <- exp( - r1)
-    f2 <- exp( - r2)
-    pivec <- f1 / ( f1 + f2 )
-    out <- lsfit(v, pivec)
-    taulp = out$coef
-    tau[ , j] = taulp
-  }
+  # x1 = cbind(1,x)
+  # for (j in 1:ninits) {
+  #   mubeta1 <- mubeta[1:q1, j]
+  #   mubeta2 <- mubeta[(q1+1):(2*q1), j]
+  #   sigma1 <- stdR
+  #   r1 <- (1.0/sigma1)*(y - x1 %*% mubeta1)
+  #   r2 <- (1.0/sigma1)*(y - x1 %*% mubeta2)
+  #   r1 <- (0.5)*r1*r1
+  #   r2 <- (0.5)*r2*r2
+  #   f1 <- exp( - r1)
+  #   f2 <- exp( - r2)
+  #   pivec <- f1 / ( f1 + f2 )
+  #   out <- lsfit(v, pivec)
+  #   taulp = out$coef
+  #   tau[ , j] = taulp
+  # }
 
   list(tau = tau, mubeta = mubeta, sigma = sigma, gam = gam)
 

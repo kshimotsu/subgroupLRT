@@ -199,12 +199,13 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
           lambda(i) = exp(vtau) / ( 1 + exp(vtau));
           restau(i) = pi(i) - lambda(i);
           grad += trans( restau(i) * v1.row(i) );
-          mhess += lambda(i)*restau(i)*trans( v1.row(i) ) * v1.row(i); /* -H */
+          mhess -= lambda(i)*(1-lambda(i))*trans( v1.row(i) ) * v1.row(i); /* H */
+          // mhess += lambda(i)*restau(i)*trans( v1.row(i) ) * v1.row(i); /* -H */
         }
         if (rcond(mhess) > SINGULAR_EPS) {
-          tau = tau + inv_sympd(mhess) * grad; /* update tau */
+          tau = tau - inv_sympd(mhess) * grad; /* update tau */
         } else {
-          tau = tau + (inv_sympd(mhess) + 0.1*Imat.eye()) * grad;
+          tau = tau - (inv_sympd(mhess) + 0.1*Imat.eye()) * grad;
         }
 
         logliktau = 0;
