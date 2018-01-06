@@ -205,7 +205,7 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
         if (rcond(mhess) > SINGULAR_EPS) {
           tau = tau - inv_sympd(mhess) * grad; /* update tau */
         } else {
-          tau = tau - 0.1*Imat.eye() * grad;
+          tau = tau - 1.0*Imat.eye() * grad;
           /* This one is slow but aviods errors.
            * In the future, we should use BFGS. */
         }
@@ -223,6 +223,14 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
         if (difftau < tol || tauit>=maxit){
           break;
         }
+
+        /* Check singularity. Exit from the loop if singular. */
+          // if (alpha(j) < 1e-8 || std::isnan(alpha(j))|| std::isnan(logliktau)){
+        if (std::isnan(logliktau)){
+          sing = 1;
+          break;
+        }
+
         tauit++;
       } /* end of itertau loop */
 
@@ -257,14 +265,14 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
   //       }
   //     }
   //
-  //     /* Exit from the loop if singular */
-  //     if (sing) {
-  //       notcg(jn) = 1;
-  //       break;
-  //     }
-  //
+      /* Exit from the loop if singular */
+      if (sing) {
+        notcg(jn) = 1;
+        break;
+      }
+
      }/* EM loop ends */
-  //
+
      loglikset(jn) = ll;
      for (int j = 0; j<q2; j++) {
        b_jn(j) = tau(j);
@@ -290,6 +298,9 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
   //                             Named("post") = wrap(post)
   // );
   return Rcpp::List::create(Named("loglikset") = wrap(loglikset),
-                            Named("post") = wrap(post));
+                            Named("post") = wrap(post),
+                            Named("notcg") = wrap(notcg),
+                            Named("logliktau") = wrap(logliktau)
+                            );
 }
 
