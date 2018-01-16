@@ -60,7 +60,7 @@
 #' # out <- regmixMLE_homo(y = eruptions, x = waiting, m = 2)
 #' # summary(out)
 subgroupMLE_homo <- function (y, x, v, m = 2, z = NULL, vcov.method = c("Hessian", "OPG", "none"),
-                        ninits = 10, epsilon = 1e-08, maxit = 2000,
+                        ninits = 10, epsilon = 1e-08, maxit = 2000, tauinit = c(0,0),
                         epsilon.short = 1e-02, maxit.short = 500, binit = NULL) {
 
   y <- as.vector(y)
@@ -99,14 +99,15 @@ subgroupMLE_homo <- function (y, x, v, m = 2, z = NULL, vcov.method = c("Hessian
     aic     <- -2*loglik + 2*npar
     bic     <- -2*loglik + log(n)*npar
 
-    parlist <- list(alpha = 1, mubeta = mubeta, sigma = sigma, gam = gam)
-    coefficients <- c(alpha = 1, mubeta = mubeta, sigma = sigma, gam = gam)
+    parlist <- list(tau = 0, mubeta = mubeta, sigma = sigma, gam = gam)
+    coefficients <- c(tau = 0, mubeta = mubeta, sigma = sigma, gam = gam)
     postprobs <- rep(1, n)
 
   } else {  # m >= 2
 
     # generate initial values
     tmp <- subgroupMLEinit_homo(y = y, x = x, v = v, z = z, ninits = ninits.short, m = m)
+    tmp$tau <- matrix(tauinit, nrow = q2, ncol = ninits.short)
 
 	if (is.null(z))
       ztilde <- matrix(0) # dummy
@@ -134,6 +135,9 @@ subgroupMLE_homo <- function (y, x, v, m = 2, z = NULL, vcov.method = c("Hessian
     }
     loglik    <- out$loglikset[index]
     postprobs <- matrix(out$post[,index], nrow=n)
+    if (is.nan(loglik)) {
+      loglik <- -Inf
+    }
 
     aic <- -2*loglik + 2*npar
     bic <- -2*loglik + log(n)*npar
@@ -180,7 +184,7 @@ subgroupMLE_homo <- function (y, x, v, m = 2, z = NULL, vcov.method = c("Hessian
   #           components = getComponentcomponents(postprobs),
   #           call = match.call(), m = m, label = "PMLE")
 
-  a <- list(coefficients = coefficients, loglik = loglik,
+  a <- list(coefficients = coefficients, parlist = parlist, loglik = loglik,
             aic = aic, bic = bic)
   # class(a) <- "normalregMix"
 
