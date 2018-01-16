@@ -65,7 +65,7 @@ subgroupLRT_homo_2 <- function (y, x, v, m = 1, z = NULL, ninits = 10, k = 100,
   lrtstat <- 2*(loglikem - loglik0)
 
   if (crit.method == "boot") {
-    result  <-subgroupCritBoot_homo_EM(y=y, x=x, v=v, parlist=subgroup.mle.result$parlist, z=z, values=lrtstat,
+    result  <-subgroupCritBoot_homo_2(y=y, x=x, v=v, parlist=subgroup.mle.result$parlist, z=z, values=lrtstat,
                                        k=k, ninits=ninits, nbtsp=nbtsp, parallel=parallel, cl=cl)
   } else {
     result <- list()
