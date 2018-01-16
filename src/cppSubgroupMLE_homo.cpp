@@ -21,6 +21,7 @@ const double SINGULAR_EPS = 10e-10; // criteria for matrix singularity
 //' @param maxit maximum number of iterations.
 //' @param ninits number of initial values.
 //' @param tol Convergence is declared when the penalized log-likelihood increases by less than \code{tol}.
+//' @param updatetau If 0, no update of tau. If 1, update tau
 //' @return  A list with items:
 //' \item{loglikset}{vector of the maximized value of the log-likelihood.}
 //' \item{notcg}{vector that records whether EM steps converged or not for each initial value.}
@@ -36,7 +37,9 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
                       int p,
                       int maxit = 2000,
                       int ninits = 10,
-                      double tol = 1e-8) {
+                      double tol = 1e-8,
+                      int updatetau = 1,
+                      int emtest = 0) {
   int n = ys.size();
   int q = xs.ncol();
   int qv = vs.ncol();
@@ -51,6 +54,12 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
   arma::vec alpha(m), ssr(m), alp_sig(m);
   arma::mat mubeta(q1,m);
   arma::mat tau(q2,1);
+  arma::mat newtau(q2,1);
+  arma::mat newtaua(q2,1);
+  double tau0a;
+  arma::mat tauxa(qv,1);
+  arma::mat vtauvec(n,1);
+  arma::mat alphavec(n,1);
   arma::vec r(m), l_j(m);
   arma::mat w(m,n);
   arma::mat post(m*n,ninits);
@@ -78,6 +87,7 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
   arma::mat Imat(q2,q2);
   arma::vec lambda(n);
   arma::vec restau(n);
+  double lb = 0.2*emtest;
 
   x1.col(0) = arma::ones(n);
   for (int i=1; i < q1; ++i) {
@@ -187,52 +197,72 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
       }
       sigma = sqrt( sum(ssr) / n );
 
+      /* Check singularity. Exit from the loop if singular. */
+      vtauvec = v1 * tau;
+      alphavec = exp( vtauvec ) / ( 1 + exp( vtauvec ) );
+      if (alphavec.min() < 1e-8 || alphavec.max() > 1.0-1e-8 ){
+        sing = 1;
+        break;
+      }
+
       /* Update tau */
-      tauit = 0;
-      difftau = 0;
-      oldlogliktau = R_NegInf;
-      grad = arma::zeros(q2,1);
-      mhess = arma::zeros(q2,q2);
-      for (int itertau = 0; itertau < maxit; itertau++) {
-        for (int i = 0; i < n; i++) {
-          vtau = as_scalar(v1.row(i)*tau);
-          lambda(i) = exp(vtau) / ( 1 + exp(vtau));
-          restau(i) = pi(i) - lambda(i);
-          grad += trans( restau(i) * v1.row(i) );
-          mhess -= lambda(i)*(1-lambda(i))*trans( v1.row(i) ) * v1.row(i); /* H */
-          // mhess += lambda(i)*restau(i)*trans( v1.row(i) ) * v1.row(i); /* -H */
-        }
-        if (rcond(mhess) > SINGULAR_EPS) {
-          tau = tau - inv_sympd(mhess) * grad; /* update tau */
-        } else {
-          tau = tau - 1.0*Imat.eye() * grad;
-          /* This one is slow but aviods errors.
-           * In the future, we should use BFGS. */
-        }
 
-        logliktau = 0;
-        for (int i = 0; i < n; i++) {
-          vtau = as_scalar(v1.row(i)*tau);
-          lambda(i) = exp(vtau) / ( 1 + exp(vtau));
-          logliktau += pi(i) * log( lambda(i) ) + ( 1 - pi(i) ) * log( 1 - lambda(i) ); /* compute the value of log likelihood */
-        }
-        difftau = logliktau - oldlogliktau;
-        oldlogliktau = logliktau;
+      if (updatetau > 0){
+        tauit = 0;
+        difftau = 0;
+        oldlogliktau = R_NegInf;
+        grad = arma::zeros(q2,1);
+        mhess = arma::zeros(q2,q2);
+        for (int itertau = 0; itertau < maxit; itertau++) {
+          for (int i = 0; i < n; i++) {
+            vtau = as_scalar(v1.row(i)*tau);
+            lambda(i) = exp(vtau) / ( 1 + exp(vtau));
+            restau(i) = pi(i) - lambda(i);
+            grad += trans( restau(i) * v1.row(i) );
+            mhess -= lambda(i)*(1-lambda(i))*trans( v1.row(i) ) * v1.row(i); /* H */
+      // mhess += lambda(i)*restau(i)*trans( v1.row(i) ) * v1.row(i); /* -H */
+          }
+          if (rcond(mhess) > SINGULAR_EPS) {
+            newtau = tau - inv_sympd(mhess) * grad; /* update tau */
+          } else {
+            newtau = tau - 0.1*Imat.eye() * grad;
+            /* This one is slow but aviods errors.
+            * In the future, we should use line search. */
+          }
 
-        /* Normal exit */
-        if (difftau < tol || tauit>=maxit){
-          break;
-        }
+          /* Check the updated tau */
+          newtaua = abs(newtau);
+          tauxa = newtaua.submat(1,0,qv,0);
+          tau0a = arma::as_scalar(newtaua(0,0));
+          if (tau0a < 5 && tauxa.max() < 5 && tauxa.min() >= lb) {
+            tau = newtau;
+          }
 
-        /* Check singularity. Exit from the loop if singular. */
+          logliktau = 0;
+          for (int i = 0; i < n; i++) {
+            vtau = as_scalar(v1.row(i)*tau);
+            lambda(i) = exp(vtau) / ( 1 + exp(vtau));
+            logliktau += pi(i) * log( lambda(i) ) + ( 1 - pi(i) ) * log( 1 - lambda(i) ); /* compute the value of log likelihood */
+          }
+          difftau = logliktau - oldlogliktau;
+          oldlogliktau = logliktau;
+
+          /* Normal exit */
+          if (difftau < tol || tauit>=maxit){
+            break;
+          }
+
+          /* Check singularity. Exit from the loop if singular. */
           // if (alpha(j) < 1e-8 || std::isnan(alpha(j))|| std::isnan(logliktau)){
-        if (std::isnan(logliktau)){
-          sing = 1;
-          break;
-        }
+          if (std::isnan(logliktau)){
+            sing = 1;
+            break;
+          }
 
-        tauit++;
-      } /* end of itertau loop */
+          tauit++;
+        } /* end of itertau loop */
+
+      } /* end of if (updatetau > 0) */
 
 
   //
@@ -300,7 +330,9 @@ List cppSubgroupMLE_homo(NumericMatrix bs,
   return Rcpp::List::create(Named("loglikset") = wrap(loglikset),
                             Named("post") = wrap(post),
                             Named("notcg") = wrap(notcg),
-                            Named("logliktau") = wrap(logliktau)
+                            Named("logliktau") = wrap(logliktau),
+                            Named("lb") = wrap(lb),
+                            Named("tauxa") = wrap(tauxa)
                             );
 }
 
