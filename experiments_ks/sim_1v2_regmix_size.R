@@ -2,11 +2,13 @@
 
 rm(list=ls())
 
+# test of Github
+
 library(parallel)
 library(normalregMix)
 library(subgroupLRT)
 
-setwd("~/Dropbox/subgroupLRT/experiments")
+setwd("~/Dropbox/subgroupLRT/experiments_ks")
 
 outfilename <- "sim_size.RData"
 
